@@ -83,6 +83,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: "web/app/package-lock.json"
+
       - name: Create kind cluster
         uses: helm/kind-action@v1
         with:
@@ -91,10 +104,22 @@ jobs:
       - name: Verify cluster
         run: kubectl cluster-info --context kind-k8dclusterlife-test
 
-      - name: Set up Node for Playwright
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+      - name: Build frontend
+        working-directory: web/app
+        run: npm ci && npm run build
+
+      - name: Start backend server
+        run: |
+          go build -o /tmp/k8dclusterlife-server ./cmd/server
+          KUBECONFIG=$HOME/.kube/config /tmp/k8dclusterlife-server &
+          # Wait for server to be ready
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/healthz && break
+            sleep 1
+          done
+        env:
+          PORT: "8080"
+          REDIS_ADDR: "" # no redis in CI, app continues without it
 
       - name: Install Playwright
         working-directory: e2e
@@ -105,7 +130,6 @@ jobs:
         run: npx playwright test
         env:
           APP_URL: "http://localhost:8080"
-        continue-on-error: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
