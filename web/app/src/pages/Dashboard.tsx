@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useProblems } from '../hooks/useProblems'
 import { ProblemCard } from '../components/ProblemCard'
+import { HealingStream } from '../components/HealingStream'
 import type { Problem, Severity } from '../types'
 
 const severityOrder: Record<Severity, number> = { critical: 0, warning: 1, info: 2 }
@@ -14,6 +16,7 @@ function sortProblems(problems: Problem[]): Problem[] {
 
 export function Dashboard() {
   const { data: problems, isLoading, isError } = useProblems()
+  const [healingProblem, setHealingProblem] = useState<Problem | null>(null)
 
   if (isLoading) {
     return (
@@ -66,9 +69,21 @@ export function Dashboard() {
       {/* Problem List */}
       <div className="space-y-3">
         {sorted.map(problem => (
-          <ProblemCard key={problem.id} problem={problem} />
+          <ProblemCard
+            key={problem.id}
+            problem={problem}
+            onHeal={setHealingProblem}
+          />
         ))}
       </div>
+
+      {/* KI-Healing Modal */}
+      {healingProblem && (
+        <HealingStream
+          problem={healingProblem}
+          onClose={() => setHealingProblem(null)}
+        />
+      )}
     </div>
   )
 }
