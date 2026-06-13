@@ -116,9 +116,11 @@ func main() {
 			_ = json.NewEncoder(w).Encode(names)
 		})
 
-		// Protected API routes
+		// Protected API routes — auth enforced only when providers are configured
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireAuth)
+			if len(authHandler.EnabledProviders()) > 0 {
+				r.Use(auth.RequireAuth)
+			}
 			r.Get("/problems", api.HandleProblems(controller))
 			r.Mount("/healing", api.HandleHealing(healingAgent))
 		})
