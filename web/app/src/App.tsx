@@ -1,19 +1,34 @@
+import { useState, useEffect } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Dashboard } from './pages/Dashboard'
+import { Header } from './components/Header'
 import './index.css'
 
-function App() {
+const queryClient = new QueryClient()
+
+function AppShell() {
+  const [dark, setDark] = useState(() =>
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+  }, [dark])
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">k8dclusterlife</h1>
-          <p className="text-gray-500 dark:text-gray-400">Kubernetes Monitoring + KI-Selbstheilung</p>
-          <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-green-700 dark:text-green-400 font-medium">✓ Alle Cluster gesund</p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <Header darkMode={dark} onToggleDark={() => setDark(d => !d)} />
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+        <Dashboard />
+      </main>
     </div>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppShell />
+    </QueryClientProvider>
+  )
+}
