@@ -126,6 +126,9 @@ func main() {
 		})
 	})
 
+	// WebSocket for live cluster events (public — frontend reconnects on auth)
+	r.Get("/ws", api.HandleWebSocket(redisClient))
+
 	// Serve frontend static files
 	r.Handle("/*", http.FileServer(http.Dir("web/app/dist")))
 

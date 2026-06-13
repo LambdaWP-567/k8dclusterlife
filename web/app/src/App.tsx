@@ -3,13 +3,14 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
 import { ClusterAdmin } from './pages/ClusterAdmin'
+import { Settings } from './pages/Settings'
 import { Header } from './components/Header'
 import { useAuth } from './hooks/useAuth'
 import './index.css'
 
 const queryClient = new QueryClient()
 
-type Page = 'dashboard' | 'clusters'
+export type Page = 'dashboard' | 'clusters' | 'settings'
 
 function AppShell() {
   const [dark, setDark] = useState(() =>
@@ -46,6 +47,7 @@ function AppShell() {
       <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
         {page === 'dashboard' && <Dashboard />}
         {page === 'clusters' && <ClusterAdmin />}
+        {page === 'settings' && <Settings />}
       </main>
     </div>
   )

@@ -1,7 +1,6 @@
 import { useProblems } from '../hooks/useProblems'
 import type { User } from '../types'
-
-type Page = 'dashboard' | 'clusters'
+import type { Page } from '../App'
 
 interface Props {
   darkMode: boolean
@@ -54,6 +53,16 @@ export function Header({ darkMode, onToggleDark, user, currentPage, onNavigate }
                 }`}
               >
                 Cluster
+              </button>
+              <button
+                onClick={() => onNavigate?.('settings')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'settings'
+                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                Einstellungen
               </button>
             </nav>
           </div>
