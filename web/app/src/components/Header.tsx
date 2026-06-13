@@ -1,11 +1,13 @@
 import { useProblems } from '../hooks/useProblems'
+import type { User } from '../types'
 
 interface Props {
   darkMode: boolean
   onToggleDark: () => void
+  user?: User | null
 }
 
-export function Header({ darkMode, onToggleDark }: Props) {
+export function Header({ darkMode, onToggleDark, user }: Props) {
   const { data: problems } = useProblems()
   const criticalCount = problems?.filter(p => p.severity === 'critical').length ?? 0
   const totalCount = problems?.length ?? 0
@@ -51,6 +53,21 @@ export function Header({ darkMode, onToggleDark }: Props) {
                 </svg>
               )}
             </button>
+
+            {/* User avatar + logout */}
+            {user && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:block">
+                  {user.name || user.email}
+                </span>
+                <a
+                  href="/auth/logout"
+                  className="rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 border border-gray-200 dark:border-gray-700"
+                >
+                  Abmelden
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>

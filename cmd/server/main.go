@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/lambdawp-567/k8dclusterlife/internal/api"
+	"github.com/lambdawp-567/k8dclusterlife/internal/auth"
 	"github.com/lambdawp-567/k8dclusterlife/internal/cache"
 	"github.com/lambdawp-567/k8dclusterlife/internal/cluster"
 )
@@ -27,13 +29,6 @@ func main() {
 	if redisAddr == "" {
 		redisAddr = "localhost:6379"
 	}
-	redisURL := os.Getenv("REDIS_URL")
-	if redisURL != "" {
-		// strip redis:// prefix
-		if len(redisURL) > 8 {
-			redisAddr = redisURL[8:]
-		}
-	}
 
 	redisClient := cache.New(redisAddr)
 	ctx := context.Background()
@@ -47,10 +42,8 @@ func main() {
 	// Cluster controller
 	controller := cluster.NewController(redisClient)
 
-	// Auto-add cluster from in-cluster config if no kubeconfig provided
-	inClusterKubeconfig := os.Getenv("KUBECONFIG")
-	if inClusterKubeconfig == "" {
-		// Try in-cluster, ignore errors (may not be in k8s)
+	// Auto-add in-cluster config when running inside Kubernetes
+	if os.Getenv("KUBECONFIG") == "" {
 		if err := controller.AddCluster(cluster.ClusterConfig{
 			ID:   "in-cluster",
 			Name: "Local Cluster",
@@ -61,22 +54,61 @@ func main() {
 		}
 	}
 
+	// Auth handler (providers loaded from env vars)
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+	authHandler, err := auth.New(baseURL)
+	if err != nil {
+		slog.Error("failed to initialize auth providers", "error", err)
+		os.Exit(1)
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
+	r.Use(authHandler.Middleware)
 
-	// Health
+	// Health (always public)
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	// Auth routes (public)
+	r.Route("/auth", func(r chi.Router) {
+		for _, p := range []auth.Provider{auth.ProviderEntra, auth.ProviderGitHub, auth.ProviderGoogle} {
+			provider := p // capture
+			r.Get("/"+string(provider)+"/login", authHandler.HandleLogin(provider))
+			r.Get("/"+string(provider)+"/callback", authHandler.HandleCallback(provider))
+		}
+		r.Post("/logout", authHandler.HandleLogout)
+		r.Get("/logout", authHandler.HandleLogout)
+	})
+
 	// API
 	r.Route("/api", func(r chi.Router) {
-		r.Get("/problems", api.HandleProblems(controller))
+		// Auth-info endpoints (public — return null when not logged in)
+		r.Get("/me", authHandler.HandleMe)
+		r.Get("/auth/providers", func(w http.ResponseWriter, r *http.Request) {
+			providers := authHandler.EnabledProviders()
+			names := make([]string, len(providers))
+			for i, p := range providers {
+				names[i] = string(p)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(names)
+		})
+
+		// Protected API routes
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireAuth)
+			r.Get("/problems", api.HandleProblems(controller))
+		})
 	})
 
 	// Serve frontend static files

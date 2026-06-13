@@ -20,3 +20,10 @@ export interface WSEvent {
   problem?: Problem
   at: string
 }
+
+export interface User {
+  sub: string
+  email: string
+  name: string
+  provider: string
+}
