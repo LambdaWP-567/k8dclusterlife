@@ -1,6 +1,6 @@
 module github.com/lambdawp-567/k8dclusterlife
 
-go 1.24
+go 1.25
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.50.1 // indirect
