@@ -16,6 +16,9 @@ import (
 	"github.com/lambdawp-567/k8dclusterlife/internal/auth"
 	"github.com/lambdawp-567/k8dclusterlife/internal/cache"
 	"github.com/lambdawp-567/k8dclusterlife/internal/cluster"
+	"github.com/lambdawp-567/k8dclusterlife/internal/healing"
+	"github.com/lambdawp-567/k8dclusterlife/internal/metrics"
+	"github.com/lambdawp-567/k8dclusterlife/internal/notify"
 )
 
 func main() {
@@ -54,7 +57,14 @@ func main() {
 		}
 	}
 
-	// Auth handler (providers loaded from env vars)
+	// Healing agent (executor without a fixed cluster — clusters resolved per-session)
+	healingAgent := healing.New(nil)
+
+	// Notifier
+	notifier := notify.NewNotifier()
+	_ = notifier // used by event handlers in production
+
+	// Auth handler
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
@@ -79,10 +89,13 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	// Prometheus metrics (always public)
+	r.Handle("/metrics", metrics.Handler())
+
 	// Auth routes (public)
 	r.Route("/auth", func(r chi.Router) {
 		for _, p := range []auth.Provider{auth.ProviderEntra, auth.ProviderGitHub, auth.ProviderGoogle} {
-			provider := p // capture
+			provider := p
 			r.Get("/"+string(provider)+"/login", authHandler.HandleLogin(provider))
 			r.Get("/"+string(provider)+"/callback", authHandler.HandleCallback(provider))
 		}
@@ -92,7 +105,6 @@ func main() {
 
 	// API
 	r.Route("/api", func(r chi.Router) {
-		// Auth-info endpoints (public — return null when not logged in)
 		r.Get("/me", authHandler.HandleMe)
 		r.Get("/auth/providers", func(w http.ResponseWriter, r *http.Request) {
 			providers := authHandler.EnabledProviders()
@@ -108,6 +120,7 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireAuth)
 			r.Get("/problems", api.HandleProblems(controller))
+			r.Mount("/healing", api.HandleHealing(healingAgent))
 		})
 	})
 
