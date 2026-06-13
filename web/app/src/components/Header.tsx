@@ -1,13 +1,17 @@
 import { useProblems } from '../hooks/useProblems'
 import type { User } from '../types'
 
+type Page = 'dashboard' | 'clusters'
+
 interface Props {
   darkMode: boolean
   onToggleDark: () => void
   user?: User | null
+  currentPage?: Page
+  onNavigate?: (page: Page) => void
 }
 
-export function Header({ darkMode, onToggleDark, user }: Props) {
+export function Header({ darkMode, onToggleDark, user, currentPage, onNavigate }: Props) {
   const { data: problems } = useProblems()
   const criticalCount = problems?.filter(p => p.severity === 'critical').length ?? 0
   const totalCount = problems?.length ?? 0
@@ -16,25 +20,57 @@ export function Header({ darkMode, onToggleDark, user }: Props) {
     <header className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
-          <div className="flex items-center gap-3">
-            <svg className="h-7 w-7 text-violet-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-            </svg>
-            <span className="text-lg font-semibold text-gray-900 dark:text-white">
-              k8dclusterlife
-            </span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => onNavigate?.('dashboard')}
+              className="flex items-center gap-2 hover:opacity-80"
+            >
+              <svg className="h-7 w-7 text-violet-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+              </svg>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                k8dclusterlife
+              </span>
+            </button>
+
+            {/* Nav links */}
+            <nav className="hidden sm:flex items-center gap-1">
+              <button
+                onClick={() => onNavigate?.('dashboard')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'dashboard'
+                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => onNavigate?.('clusters')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'clusters'
+                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                Cluster
+              </button>
+            </nav>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Problem counter badge */}
             {totalCount > 0 && (
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                criticalCount > 0
-                  ? 'bg-red-600 text-white'
-                  : 'bg-yellow-500 text-white'
-              }`}>
+              <button
+                onClick={() => onNavigate?.('dashboard')}
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold cursor-pointer ${
+                  criticalCount > 0
+                    ? 'bg-red-600 text-white'
+                    : 'bg-yellow-500 text-white'
+                }`}
+              >
                 {totalCount}
-              </span>
+              </button>
             )}
 
             {/* Dark mode toggle */}
