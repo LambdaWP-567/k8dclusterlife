@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "k8dclusterlife.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "k8dclusterlife.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.app.port | quote }}
+  LOG_LEVEL: {{ .Values.app.logLevel | quote }}
+  AUTONOMY_MODE: {{ .Values.healing.autonomyMode | quote }}
+  COUNTDOWN_SECONDS: {{ .Values.healing.countdownSeconds | quote }}
+  REFRESH_INTERVAL_S: {{ .Values.monitoring.refreshIntervalSeconds | quote }}
+  ENTRA_ENABLED: {{ .Values.auth.entraId.enabled | quote }}
+  GITHUB_AUTH_ENABLED: {{ .Values.auth.github.enabled | quote }}
+  GOOGLE_AUTH_ENABLED: {{ .Values.auth.google.enabled | quote }}

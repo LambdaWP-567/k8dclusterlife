@@ -1,0 +1,150 @@
+# k8dclusterlife Helm Chart Values
+# See ARCHITECTURE.md for full documentation
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/lambdawp-567/k8dclusterlife
+  pullPolicy: IfNotPresent
+  tag: ""  # defaults to appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Application Config ─────────────────────────────────────────────────────────
+
+app:
+  port: 8080
+  # JWT secret for session signing — change in production!
+  jwtSecret: "change-me-in-production"
+  # Log level: debug, info, warn, error
+  logLevel: info
+
+# ── Authentication (OIDC) ──────────────────────────────────────────────────────
+
+auth:
+  # Microsoft Entra ID
+  entraId:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+    tenantId: ""
+  # GitHub OAuth
+  github:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+  # Google OAuth
+  google:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+
+# ── KI Healing ─────────────────────────────────────────────────────────────────
+
+healing:
+  # Anthropic API Key for Claude
+  claudeApiKey: ""
+  # Autonomy mode: MANUAL, COUNTDOWN, FULL_AUTO
+  autonomyMode: MANUAL
+  # Countdown duration in seconds (for COUNTDOWN mode)
+  countdownSeconds: 60
+
+# ── Notifications ──────────────────────────────────────────────────────────────
+
+notifications:
+  # Microsoft Teams Webhook URL
+  teamsWebhookUrl: ""
+
+# ── Cluster Monitoring ─────────────────────────────────────────────────────────
+
+monitoring:
+  # Polling interval for cluster status (seconds)
+  refreshIntervalSeconds: 30
+
+# ── Kubernetes Resources ───────────────────────────────────────────────────────
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+rbac:
+  create: true
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: k8dclusterlife.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: k8dclusterlife-tls
+    #   hosts:
+    #     - k8dclusterlife.example.com
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ── PostgreSQL (Bitnami) ───────────────────────────────────────────────────────
+
+postgresql:
+  enabled: true
+  auth:
+    username: k8dclusterlife
+    password: k8dclusterlife
+    database: k8dclusterlife
+  primary:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# ── Redis (Bitnami) ───────────────────────────────────────────────────────────
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+# ── External DB/Redis (if not using subcharts) ─────────────────────────────────
+
+externalPostgresql:
+  host: ""
+  port: 5432
+  database: k8dclusterlife
+  username: k8dclusterlife
+  password: ""
+
+externalRedis:
+  host: ""
+  port: 6379
+
+# ── Test Orchestrator ──────────────────────────────────────────────────────────
+
+testOrch:
+  enabled: false
+  image:
+    repository: ghcr.io/lambdawp-567/k8dclusterlife-testorch
+    tag: ""
+  namespace: k8dclusterlife-test

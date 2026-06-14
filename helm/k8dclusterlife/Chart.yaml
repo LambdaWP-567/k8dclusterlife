@@ -1,0 +1,22 @@
+apiVersion: v2
+name: k8dclusterlife
+description: Kubernetes Monitoring + AI Self-Healing
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - kubernetes
+  - monitoring
+  - ai
+  - self-healing
+maintainers:
+  - name: LambdaWP-567
+dependencies:
+  - name: postgresql
+    version: "16.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "21.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
