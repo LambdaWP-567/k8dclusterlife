@@ -80,7 +80,6 @@ func main() {
 			slog.Warn("failed to load clusters from db", "error", err)
 		} else {
 			for _, c := range clusters {
-				// Try to get kubeconfig from K8s secret — skip if not available in dev
 				if err := controller.AddCluster(cluster.ClusterConfig{
 					ID:   c.ID,
 					Name: c.Name,
@@ -110,12 +109,34 @@ func main() {
 	notifier := notify.NewNotifier()
 	_ = notifier
 
-	// Auth handler
+	// Auth handler — use DB-backed SSO config when DB is available
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}
-	authHandler, err := auth.New(baseURL)
+
+	var ssoLoader func(context.Context) ([]auth.SSOProviderConfig, error)
+	if db != nil {
+		ssoLoader = func(ctx context.Context) ([]auth.SSOProviderConfig, error) {
+			providers, err := db.ListSSOProviders(ctx)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]auth.SSOProviderConfig, len(providers))
+			for i, p := range providers {
+				out[i] = auth.SSOProviderConfig{
+					Provider:     p.Provider,
+					Enabled:      p.Enabled,
+					ClientID:     p.ClientID,
+					ClientSecret: p.ClientSecret,
+					TenantID:     p.TenantID,
+				}
+			}
+			return out, nil
+		}
+	}
+
+	authHandler, err := auth.New(baseURL, ssoLoader)
 	if err != nil {
 		slog.Error("failed to initialize auth providers", "error", err)
 		os.Exit(1)
@@ -162,11 +183,9 @@ func main() {
 			_ = json.NewEncoder(w).Encode(names)
 		})
 
-		// Protected API routes — auth enforced only when providers are configured
+		// Protected API routes — auth enforced dynamically based on configured providers
 		r.Group(func(r chi.Router) {
-			if len(authHandler.EnabledProviders()) > 0 {
-				r.Use(auth.RequireAuth)
-			}
+			r.Use(authHandler.RequireAuth)
 			r.Get("/problems", api.HandleProblems(controller))
 			r.Mount("/healing", api.HandleHealing(healingAgent))
 
@@ -174,6 +193,7 @@ func main() {
 			if db != nil {
 				r.Mount("/clusters", api.HandleClusters(db, nil, controller, "default", refreshInterval))
 				r.Mount("/settings", api.HandleSettings(db))
+				r.Mount("/sso", api.HandleSSO(db, authHandler))
 			}
 		})
 	})

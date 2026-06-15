@@ -35,8 +35,26 @@ func (h *Handler) Middleware(next http.Handler) http.Handler {
 }
 
 // RequireAuth returns a 401 if the request has no valid session.
+// Used directly in tests; production code should use Handler.RequireAuth.
 func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if ClaimsFromCtx(r.Context()) == nil {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireAuth is a middleware that enforces authentication when at least one
+// SSO provider is configured. When no providers are active the request passes
+// through, enabling zero-config dev and CI environments.
+func (h *Handler) RequireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(h.EnabledProviders()) == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if ClaimsFromCtx(r.Context()) == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
