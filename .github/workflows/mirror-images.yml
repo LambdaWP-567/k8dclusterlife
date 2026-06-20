@@ -1,0 +1,88 @@
+name: Mirror Images to GHCR
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Monday at 03:00 UTC
+    - cron: "0 3 * * 1"
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  mirror:
+    name: Mirror ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Bitnami PostgreSQL ──────────────────────────────────────────────
+          - name: postgresql
+            source: registry-1.docker.io/bitnami/postgresql
+            # Chart 18.7.6 appVersion 18.4.0 — update when bumping Chart.yaml
+            tag: 18.4.0-debian-12-r0
+            target_tag: 18.4.0
+          # ── Bitnami Redis ───────────────────────────────────────────────────
+          - name: redis
+            source: registry-1.docker.io/bitnami/redis
+            # Chart 27.0.10 appVersion 8.8.0 — update when bumping Chart.yaml
+            tag: 8.8.0-debian-12-r0
+            target_tag: 8.8.0
+          # ── Bitnami os-shell (init containers used by both charts) ──────────
+          - name: os-shell
+            source: registry-1.docker.io/bitnami/os-shell
+            tag: 12-debian-12-r43
+            target_tag: 12-debian-12-r43
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Mirror ${{ matrix.name }}:${{ matrix.tag }}
+        run: |
+          SOURCE="${{ matrix.source }}:${{ matrix.tag }}"
+          TARGET="${{ env.REGISTRY }}/${{ env.OWNER }}/mirrors/${{ matrix.name }}:${{ matrix.target_tag }}"
+          echo "Mirroring $SOURCE → $TARGET"
+          crane copy "$SOURCE" "$TARGET"
+
+      - name: Record digest
+        run: |
+          TARGET="${{ env.REGISTRY }}/${{ env.OWNER }}/mirrors/${{ matrix.name }}:${{ matrix.target_tag }}"
+          crane digest "$TARGET"
+
+  mirror-helm-charts:
+    name: Mirror Helm charts to GHCR OCI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Mirror postgresql chart
+        run: |
+          helm pull oci://registry-1.docker.io/bitnamicharts/postgresql --version 18.7.6
+          helm push postgresql-18.7.6.tgz oci://ghcr.io/${{ env.OWNER }}/charts
+
+      - name: Mirror redis chart
+        run: |
+          helm pull oci://registry-1.docker.io/bitnamicharts/redis --version 27.0.10
+          helm push redis-27.0.10.tgz oci://ghcr.io/${{ env.OWNER }}/charts
