@@ -76,6 +76,19 @@ jobs:
           file: Dockerfile.testorch
           push: false
 
+  helm-lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      # Charts are vendored in helm/k8dclusterlife/charts/ — no network needed
+      - name: Lint chart
+        run: helm lint helm/k8dclusterlife --set postgresql.auth.password=test
+
   e2e:
     name: E2E Tests (kind)
     runs-on: ubuntu-latest

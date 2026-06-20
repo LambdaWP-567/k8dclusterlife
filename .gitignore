@@ -19,8 +19,9 @@ dist/
 # Docker
 .docker/
 
-# Helm
+# Helm — ignore loose TGZs everywhere except vendored chart dependencies
 *.tgz
+!helm/k8dclusterlife/charts/*.tgz
 
 # OS
 .DS_Store

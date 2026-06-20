@@ -8,6 +8,14 @@ image:
   pullPolicy: IfNotPresent
   tag: ""  # defaults to appVersion
 
+# ── Image registry override ────────────────────────────────────────────────────
+# Set globalImageRegistry to redirect ALL subchart images (PostgreSQL, Redis)
+# to your own mirror. After running the mirror-images workflow the value is:
+#   ghcr.io/lambdawp-567/mirrors
+# Leave empty to pull directly from registry-1.docker.io/bitnami (default).
+global:
+  imageRegistry: ""
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
